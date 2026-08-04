@@ -18,7 +18,7 @@ message CallContext {
   // hop 是当前调用深度，从 0 开始
   int32 hop = 4;
 
-  // route 记录调用路径，格式如 "flutter→ms→agent→ms"
+  // route 仅记录私有服务路径，格式如 "ms→agent→product"；外部客户端不入链。
   string route = 5;
 
   // deadline_unix_ms 是整个调用链的截止时间（Unix 毫秒）
@@ -38,6 +38,27 @@ message PermissionContext {
 
   // account_generation 是账号生成标识，用于检测账号删除/重建
   int64 account_generation = 4;
+
+  // root_request_digest is the grant-independent digest for the current grant
+  // boundary. In an ExchangeProductDelegationRequest parent_permission it is
+  // the parent Agent business digest; in the returned product_permission it is
+  // the exact Product business digest. The Agent never edits or signs it.
+  bytes root_request_digest = 5;
+}
+
+// OperationControlGrantEnvelope carries a short-lived, opaque control grant
+// returned by the Product capability owner. The envelope is intentionally
+// generic so clients can cache/replay control grants without learning the
+// signing key or grant wire format.
+message OperationControlGrantEnvelope {
+  // action is one of get/watch/cancel/reconcile and must be unique per response.
+  string action = 1;
+
+  // grant is an opaque, domain-separated control-grant-v1 token.
+  bytes grant = 2;
+
+  // expires_at_unix_ms is the absolute expiry of grant.
+  int64 expires_at_unix_ms = 3;
 }
 
 // OperationState 定义 operation 的状态机

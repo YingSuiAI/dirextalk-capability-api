@@ -4,7 +4,7 @@
 
 ## 协议版本
 
-- **当前版本**: v1.0.0-dev
+- **当前版本**: v1.0.0
 - **包名**: `dirextalk.capability.v1`
 - **协议**: gRPC + Protobuf
 
@@ -46,18 +46,27 @@ require (
 ## 开发
 
 ```bash
-# 安装 Buf
-go install github.com/bufbuild/buf/cmd/buf@latest
+# 使用仓库脚本（Buf CLI 与 protoc 插件版本均已固定）
+bash scripts/generate-go.sh
 
 # Lint
 buf lint
 
-# Breaking change 检查
-buf breaking --against '.git#tag=v1.0.0'
+# 初始协议的 breaking change 检查（以 main 基线为准）
+buf breaking --against '.git#branch=main'
 
-# 生成代码
-buf generate
+# 生成代码（不要依赖本机缓存的未跟踪 gen/ 文件）
+bash scripts/generate-go.sh
+
+# 生成一次性的 mTLS、方向 token 与 Ed25519 grant key fixture
+# （目录必须由调用方指定，默认不要写入仓库）
+tmp_certs="$(mktemp -d)"
+bash scripts/generate-test-certs.sh "$tmp_certs"
 ```
+
+输出中的 `grant-private.key` 是 message-server 独占的 64 字节签名密钥；
+`grant-public.key` 是提供给 Agent 与 Product 验证端的 32 字节公钥。不得把私钥
+挂载进 Agent、Product、Flutter 或镜像层。
 
 ## 协议原则
 
@@ -66,3 +75,7 @@ buf generate
 3. **确定性**: 使用 RFC 8785 canonical JSON，避免 Struct 精度损失
 4. **可追溯**: 每个请求绑定 operation_id、chain_id、digest
 5. **防御深度**: mTLS + token + SNI + instance/generation 多层验证
+
+Product delegation 使用私有 `ExchangeProductDelegation`：请求必须显式标注
+`QUERY` 或 `START_OPERATION`；Query 不携带 child UUID，Start 的 child UUID 会被
+message-server 签入标准 `grant-v1`，Product 在执行边界再次校验。

@@ -1,120 +1,86 @@
-#!/bin/bash
-# 生成测试用 mTLS 证书
-# 用于开发和测试环境，生产环境应使用正式 CA
+#!/usr/bin/env bash
+set -euo pipefail
 
-set -e
+# Generate disposable local mTLS fixtures. The output directory is explicit so
+# callers can keep private keys outside the repository (for example, under a
+# freshly-created mktemp directory in CI).
+#
+# Usage:
+#   scripts/generate-test-certs.sh /tmp/dirextalk-capability-certs
 
-CERTS_DIR="testdata/certs"
-mkdir -p "$CERTS_DIR"
-cd "$CERTS_DIR"
+if [[ $# -ne 1 || -z "$1" ]]; then
+  echo "usage: $0 OUTPUT_DIR" >&2
+  exit 2
+fi
 
-echo "==> 生成 CA 根证书"
-openssl genrsa -out ca-key.pem 4096
-openssl req -new -x509 -days 3650 -key ca-key.pem -out ca-cert.pem \
+out_dir="$(readlink -f "$1")"
+mkdir -p "$out_dir"
+chmod 700 "$out_dir"
+work_dir="$(mktemp -d "${TMPDIR:-/tmp}/dirextalk-certs.XXXXXX")"
+cleanup() {
+  rm -rf "$work_dir"
+}
+trap cleanup EXIT
+chmod 700 "$work_dir"
+
+cd "$work_dir"
+
+openssl genrsa -out ca-key.pem 4096 2>/dev/null
+openssl req -new -x509 -days 3650 -sha256 -key ca-key.pem -out ca-cert.pem \
   -subj "/C=CN/ST=Beijing/L=Beijing/O=Dirextalk Test/CN=Dirextalk Test CA"
 
-echo "==> 生成 Agent 服务端证书"
-openssl genrsa -out agent-server-key.pem 2048
-openssl req -new -key agent-server-key.pem -out agent-server.csr \
-  -subj "/C=CN/ST=Beijing/L=Beijing/O=Dirextalk/CN=dirextalk-agent"
+make_cert() {
+  local role="$1" cn="$2" eku="$3" san="$4"
+  local key="${role}-key.pem" csr="${role}.csr" cert="${role}-cert.pem"
+  local cnf="${role}.cnf"
 
-# 创建 SAN 配置（支持 localhost 和 127.0.0.1）
-cat > agent-server-san.cnf <<EOF
-[req]
-distinguished_name = req_distinguished_name
-req_extensions = v3_req
-
-[req_distinguished_name]
-
+  openssl genrsa -out "$key" 2048 2>/dev/null
+  openssl req -new -sha256 -key "$key" -out "$csr" \
+    -subj "/C=CN/ST=Beijing/L=Beijing/O=Dirextalk/CN=${cn}"
+  cat >"$cnf" <<EOF
 [v3_req]
-basicConstraints = CA:FALSE
-keyUsage = nonRepudiation, digitalSignature, keyEncipherment
-extendedKeyUsage = serverAuth
-subjectAltName = @alt_names
-
-[alt_names]
-DNS.1 = localhost
-DNS.2 = dirextalk-agent
-IP.1 = 127.0.0.1
+basicConstraints = critical,CA:FALSE
+keyUsage = critical,digitalSignature,keyEncipherment
+extendedKeyUsage = ${eku}
+subjectAltName = ${san}
 EOF
+  openssl x509 -req -sha256 -in "$csr" -CA ca-cert.pem -CAkey ca-key.pem \
+    -CAcreateserial -out "$cert" -days 365 -extensions v3_req -extfile "$cnf"
+}
 
-openssl x509 -req -in agent-server.csr -CA ca-cert.pem -CAkey ca-key.pem \
-  -CAcreateserial -out agent-server-cert.pem -days 365 \
-  -extensions v3_req -extfile agent-server-san.cnf
+# Server certificates are serverAuth-only; client certificates are
+# clientAuth-only. This prevents accidentally using a fixture in the opposite
+# direction while still exercising mTLS in both private gRPC directions.
+make_cert agent-server dirextalk-agent serverAuth "DNS:localhost,DNS:dirextalk-agent,IP:127.0.0.1"
+make_cert ms-server dirextalk-message-server serverAuth "DNS:localhost,DNS:dirextalk-message-server,IP:127.0.0.1"
+make_cert ms-client message-server-client clientAuth "DNS:message-server-client"
+make_cert agent-client agent-client clientAuth "DNS:agent-client"
 
-echo "==> 生成 message-server 客户端证书（访问 Agent）"
-openssl genrsa -out ms-client-key.pem 2048
-openssl req -new -key ms-client-key.pem -out ms-client.csr \
-  -subj "/C=CN/ST=Beijing/L=Beijing/O=Dirextalk/CN=message-server-client"
+# Shared API metadata requires exactly 32 random bytes encoded as unpadded
+# base64url (43 ASCII characters).
+openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n' >ms-to-agent.token
+openssl rand -base64 32 | tr '+/' '-_' | tr -d '=\n' >agent-to-ms.token
 
-openssl x509 -req -in ms-client.csr -CA ca-cert.pem -CAkey ca-key.pem \
-  -CAcreateserial -out ms-client-cert.pem -days 365
+# Only message-server receives the raw 64-byte Ed25519 signing key. Agent and
+# Product receive the raw 32-byte public key. OpenSSL's PKCS#8/SPKI wrappers
+# end with the seed/public bytes respectively; Go's Ed25519 private form is
+# seed || public.
+openssl genpkey -algorithm ED25519 -out grant-signing.pem 2>/dev/null
+openssl pkey -in grant-signing.pem -outform DER | tail -c 32 >grant-seed.bin
+openssl pkey -in grant-signing.pem -pubout -outform DER | tail -c 32 >grant-public.key
+cat grant-seed.bin grant-public.key >grant-private.key
+test "$(wc -c <grant-private.key)" -eq 64
+test "$(wc -c <grant-public.key)" -eq 32
 
-echo "==> 生成 message-server 服务端证书"
-openssl genrsa -out ms-server-key.pem 2048
-openssl req -new -key ms-server-key.pem -out ms-server.csr \
-  -subj "/C=CN/ST=Beijing/L=Beijing/O=Dirextalk/CN=dirextalk-message-server"
+for cert in agent-server-cert.pem ms-server-cert.pem ms-client-cert.pem agent-client-cert.pem; do
+  openssl verify -CAfile ca-cert.pem "$cert" >/dev/null
+done
 
-cat > ms-server-san.cnf <<EOF
-[req]
-distinguished_name = req_distinguished_name
-req_extensions = v3_req
-
-[req_distinguished_name]
-
-[v3_req]
-basicConstraints = CA:FALSE
-keyUsage = nonRepudiation, digitalSignature, keyEncipherment
-extendedKeyUsage = serverAuth
-subjectAltName = @alt_names
-
-[alt_names]
-DNS.1 = localhost
-DNS.2 = dirextalk-message-server
-IP.1 = 127.0.0.1
-EOF
-
-openssl x509 -req -in ms-server.csr -CA ca-cert.pem -CAkey ca-key.pem \
-  -CAcreateserial -out ms-server-cert.pem -days 365 \
-  -extensions v3_req -extfile ms-server-san.cnf
-
-echo "==> 生成 Agent 客户端证书（访问 message-server）"
-openssl genrsa -out agent-client-key.pem 2048
-openssl req -new -key agent-client-key.pem -out agent-client.csr \
-  -subj "/C=CN/ST=Beijing/L=Beijing/O=Dirextalk/CN=agent-client"
-
-openssl x509 -req -in agent-client.csr -CA ca-cert.pem -CAkey ca-key.pem \
-  -CAcreateserial -out agent-client-cert.pem -days 365
-
-echo "==> 生成方向 token"
-# MS→Agent token
-openssl rand -hex 32 > ms-to-agent.token
-# Agent→MS token
-openssl rand -hex 32 > agent-to-ms.token
-
-echo "==> 清理中间文件"
-rm -f *.csr *.cnf *.srl
-
-echo "==> 验证证书"
-openssl verify -CAfile ca-cert.pem agent-server-cert.pem
-openssl verify -CAfile ca-cert.pem ms-server-cert.pem
-openssl verify -CAfile ca-cert.pem ms-client-cert.pem
-openssl verify -CAfile ca-cert.pem agent-client-cert.pem
-
-echo ""
-echo "证书生成完成！"
-echo ""
-echo "文件清单："
-echo "  ca-cert.pem              - CA 根证书（双方都需要）"
-echo "  agent-server-cert.pem    - Agent 服务端证书"
-echo "  agent-server-key.pem     - Agent 服务端私钥"
-echo "  ms-server-cert.pem       - MS 服务端证书"
-echo "  ms-server-key.pem        - MS 服务端私钥"
-echo "  ms-client-cert.pem       - MS 客户端证书（访问 Agent）"
-echo "  ms-client-key.pem        - MS 客户端私钥"
-echo "  agent-client-cert.pem    - Agent 客户端证书（访问 MS）"
-echo "  agent-client-key.pem     - Agent 客户端私钥"
-echo "  ms-to-agent.token        - MS→Agent 方向 token"
-echo "  agent-to-ms.token        - Agent→MS 方向 token"
-echo ""
-echo "⚠️  这些是测试证书，生产环境请使用正式 CA！"
+cp ca-cert.pem agent-server-cert.pem agent-server-key.pem \
+  ms-server-cert.pem ms-server-key.pem ms-client-cert.pem ms-client-key.pem \
+  agent-client-cert.pem agent-client-key.pem ms-to-agent.token agent-to-ms.token \
+  grant-private.key grant-public.key \
+  "$out_dir/"
+chmod 600 "$out_dir"/*-key.pem "$out_dir"/*.token "$out_dir/grant-private.key"
+chmod 644 "$out_dir"/*-cert.pem "$out_dir/ca-cert.pem" "$out_dir/grant-public.key"
+echo "mTLS fixtures written to $out_dir"

@@ -5,11 +5,13 @@ managed:
     - file_option: go_package_prefix
       value: github.com/YingSuiAI/dirextalk-capability-api/gen/go
 plugins:
-  - remote: buf.build/protocolbuffers/go
+  # Keep generator versions pinned.  Generated Go files are checked in and
+  # these exact plugin versions are used to reproduce them in CI/release jobs.
+  - remote: buf.build/protocolbuffers/go:v1.36.11
     out: gen/go
     opt:
       - paths=source_relative
-  - remote: buf.build/grpc/go
+  - remote: buf.build/grpc/go:v1.6.2
     out: gen/go
     opt:
       - paths=source_relative

@@ -3,6 +3,7 @@ syntax = "proto3";
 package dirextalk.capability.v1;
 
 import "dirextalk/capability/v1/agent_capability.proto";
+import "dirextalk/capability/v1/common.proto";
 
 option go_package = "github.com/YingSuiAI/dirextalk-capability-api/gen/go/dirextalk/capability/v1;capabilityv1";
 
@@ -14,6 +15,12 @@ service ProductCapabilityService {
 
   // Query 执行无副作用的查询
   rpc Query(QueryRequest) returns (QueryResponse);
+
+  // ExchangeProductDelegation is a private Agent→message-server broker RPC.
+  // It is not a Flutter/public API: message-server verifies the parent grant,
+  // signs a bounded Product delegation, and returns only the opaque child
+  // grant. Agent never receives the signing private key.
+  rpc ExchangeProductDelegation(ExchangeProductDelegationRequest) returns (ExchangeProductDelegationResponse);
 
   // StartOperation 启动一个 operation（mutation 或 durable stream）
   rpc StartOperation(StartOperationRequest) returns (StartOperationResponse);
@@ -29,4 +36,39 @@ service ProductCapabilityService {
 
   // ReconcileOperation 协调不确定状态的 operation
   rpc ReconcileOperation(ReconcileOperationRequest) returns (ReconcileOperationResponse);
+}
+
+// ExchangeProductTargetKind removes the Query/Start ambiguity from the
+// private delegation broker. Query binds the descriptor operation name and
+// does not carry a child operation UUID; StartOperation binds a child UUID
+// that is signed into the Product grant and checked again at Product.
+enum ExchangeProductTargetKind {
+  EXCHANGE_PRODUCT_TARGET_KIND_UNSPECIFIED = 0;
+  EXCHANGE_PRODUCT_TARGET_KIND_QUERY = 1;
+  EXCHANGE_PRODUCT_TARGET_KIND_START_OPERATION = 2;
+}
+
+// ExchangeProductDelegationRequest asks message-server to bind one nested
+// Product operation to the already authenticated parent Agent request.
+message ExchangeProductDelegationRequest {
+  CallContext call_context = 1;
+  PermissionContext parent_permission = 2;
+
+  // Query has no child UUID; StartOperation must provide the nested child
+  // operation UUID here. The Product descriptor operation remains `operation`.
+  string child_operation_id = 3;
+  string capability_id = 4;
+  string operation = 5;
+  bytes request_json = 6;  // RFC 8785 canonical JSON
+  int64 expected_revision = 7;
+  ExchangeProductTargetKind target_kind = 8;
+}
+
+// ExchangeProductDelegationResponse carries an MS-signed Product permission
+// context. The context remains opaque to Agent except for owner/generation and
+// is forwarded unchanged to the exact Product operation; Agent never receives
+// the signing private key.
+message ExchangeProductDelegationResponse {
+  PermissionContext product_permission = 1;
+  int64 expires_at_unix_ms = 2;
 }

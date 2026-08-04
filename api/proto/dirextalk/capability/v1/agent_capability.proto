@@ -77,6 +77,10 @@ message StartOperationResponse {
   string operation_id = 1;
   OperationState state = 2;
   CapabilityError error = 3;
+  // Optional short-lived controls issued by the Product capability owner.
+  // On an idempotent replay with the same RootRequestDigest, the business
+  // receipt/state/result stays unchanged while this set may be renewed.
+  repeated OperationControlGrantEnvelope control_grants = 4;
 }
 
 // GetOperationRequest 获取 operation 状态请求

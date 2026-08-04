@@ -1,6 +1,15 @@
 .git/
-gen/
+# Generated protobuf sources are checked in so downstream services build from
+# a clean clone without relying on a developer's local buf/protoc cache.
+# Keep the output tree visible to git; buf generate is reproducible from the
+# pinned plugin versions in buf.gen.yaml.
 *.swp
 *.swo
 *~
 .DS_Store
+
+# Test mTLS fixtures contain private keys and directional bearer tokens. The
+# generator writes them only to a caller-selected temporary/output directory.
+testdata/certs/
+*.token
+**/testdata/fuzz/
