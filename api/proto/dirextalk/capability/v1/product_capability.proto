@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package dirextalk.capability.v1;
+
+import "dirextalk/capability/v1/agent_capability.proto";
+
+option go_package = "github.com/YingSuiAI/dirextalk-capability-api/gen/go/dirextalk/capability/v1;capabilityv1";
+
+// ProductCapabilityService 是 Agent 调用 message-server 的服务
+// 提供 Matrix/ProductCore 的读写能力，如 contacts、rooms、messages 等
+service ProductCapabilityService {
+  // DescribeCapabilities 获取 Product 提供的所有 capabilities
+  rpc DescribeCapabilities(DescribeCapabilitiesRequest) returns (DescribeCapabilitiesResponse);
+
+  // Query 执行无副作用的查询
+  rpc Query(QueryRequest) returns (QueryResponse);
+
+  // StartOperation 启动一个 operation（mutation 或 durable stream）
+  rpc StartOperation(StartOperationRequest) returns (StartOperationResponse);
+
+  // GetOperation 获取 operation 当前状态
+  rpc GetOperation(GetOperationRequest) returns (GetOperationResponse);
+
+  // WatchOperation 监听 operation 事件流
+  rpc WatchOperation(WatchOperationRequest) returns (stream WatchOperationEvent);
+
+  // CancelOperation 取消一个运行中的 operation
+  rpc CancelOperation(CancelOperationRequest) returns (CancelOperationResponse);
+
+  // ReconcileOperation 协调不确定状态的 operation
+  rpc ReconcileOperation(ReconcileOperationRequest) returns (ReconcileOperationResponse);
+}

@@ -1,0 +1,176 @@
+syntax = "proto3";
+
+package dirextalk.capability.v1;
+
+import "dirextalk/capability/v1/common.proto";
+import "dirextalk/capability/v1/descriptor.proto";
+
+option go_package = "github.com/YingSuiAI/dirextalk-capability-api/gen/go/dirextalk/capability/v1;capabilityv1";
+
+// AgentCapabilityService 是 message-server 调用 Agent 的服务
+service AgentCapabilityService {
+  // DescribeCapabilities 获取 Agent 提供的所有 capabilities
+  rpc DescribeCapabilities(DescribeCapabilitiesRequest) returns (DescribeCapabilitiesResponse);
+
+  // Query 执行无副作用的查询
+  rpc Query(QueryRequest) returns (QueryResponse);
+
+  // StartOperation 启动一个 operation（mutation 或 durable stream）
+  rpc StartOperation(StartOperationRequest) returns (StartOperationResponse);
+
+  // GetOperation 获取 operation 当前状态
+  rpc GetOperation(GetOperationRequest) returns (GetOperationResponse);
+
+  // WatchOperation 监听 operation 事件流
+  rpc WatchOperation(WatchOperationRequest) returns (stream WatchOperationEvent);
+
+  // CancelOperation 取消一个运行中的 operation
+  rpc CancelOperation(CancelOperationRequest) returns (CancelOperationResponse);
+
+  // ReconcileOperation 协调不确定状态的 operation
+  rpc ReconcileOperation(ReconcileOperationRequest) returns (ReconcileOperationResponse);
+}
+
+// DescribeCapabilitiesRequest 请求 capabilities 列表
+message DescribeCapabilitiesRequest {
+  CallContext call_context = 1;
+}
+
+// DescribeCapabilitiesResponse 返回 capabilities 列表
+message DescribeCapabilitiesResponse {
+  repeated CapabilityDescriptor capabilities = 1;
+  int64 catalog_version = 2;
+  bytes catalog_digest = 3;
+}
+
+// QueryRequest 无副作用查询请求
+message QueryRequest {
+  CallContext call_context = 1;
+  PermissionContext permission = 2;
+
+  string capability_id = 3;
+  string operation_id = 4;
+  bytes request_json = 5;  // RFC 8785 canonical JSON
+}
+
+// QueryResponse 查询响应
+message QueryResponse {
+  bytes result_json = 1;  // RFC 8785 canonical JSON
+  CapabilityError error = 2;
+}
+
+// StartOperationRequest 启动 operation 请求
+message StartOperationRequest {
+  CallContext call_context = 1;
+  PermissionContext permission = 2;
+
+  string operation_id = 3;  // UUID
+  string capability_id = 4;
+  string operation = 5;
+  bytes request_json = 6;  // RFC 8785 canonical JSON
+  bytes request_digest = 7;  // SHA-256
+  int64 expected_revision = 8;  // 乐观锁版本，0 表示不检查
+}
+
+// StartOperationResponse 启动 operation 响应
+message StartOperationResponse {
+  string operation_id = 1;
+  OperationState state = 2;
+  CapabilityError error = 3;
+}
+
+// GetOperationRequest 获取 operation 状态请求
+message GetOperationRequest {
+  CallContext call_context = 1;
+  PermissionContext permission = 2;
+
+  string operation_id = 3;
+}
+
+// GetOperationResponse 获取 operation 状态响应
+message GetOperationResponse {
+  string operation_id = 1;
+  OperationState state = 2;
+  bytes result_json = 3;  // 如果已完成
+  CapabilityError error = 4;
+  int64 sequence = 5;  // 最新事件序列号
+}
+
+// WatchOperationRequest 监听 operation 事件请求
+message WatchOperationRequest {
+  CallContext call_context = 1;
+  PermissionContext permission = 2;
+
+  string operation_id = 3;
+  int64 after_sequence = 4;  // 从此序列号之后开始监听
+}
+
+// WatchOperationEvent 是流式事件
+message WatchOperationEvent {
+  string operation_id = 1;
+  int64 sequence = 2;
+  int64 timestamp_unix_ms = 3;
+
+  oneof event {
+    AcceptedEvent accepted = 4;
+    ProgressEvent progress = 5;
+    ResultEvent result = 6;
+    ErrorEvent error = 7;
+    CancelledEvent cancelled = 8;
+    GapEvent gap = 9;
+  }
+}
+
+message AcceptedEvent {
+  OperationState state = 1;
+}
+
+message ProgressEvent {
+  bytes event_json = 1;  // RFC 8785 canonical JSON
+}
+
+message ResultEvent {
+  bytes result_json = 1;  // RFC 8785 canonical JSON
+}
+
+message ErrorEvent {
+  CapabilityError error = 1;
+}
+
+message CancelledEvent {
+  string reason = 1;
+}
+
+message GapEvent {
+  int64 earliest_available_sequence = 1;
+  int64 latest_available_sequence = 2;
+}
+
+// CancelOperationRequest 取消 operation 请求
+message CancelOperationRequest {
+  CallContext call_context = 1;
+  PermissionContext permission = 2;
+
+  string operation_id = 3;
+}
+
+// CancelOperationResponse 取消 operation 响应
+message CancelOperationResponse {
+  OperationState state = 1;
+  CapabilityError error = 2;
+}
+
+// ReconcileOperationRequest 协调 operation 请求
+message ReconcileOperationRequest {
+  CallContext call_context = 1;
+  PermissionContext permission = 2;
+
+  string operation_id = 3;
+}
+
+// ReconcileOperationResponse 协调 operation 响应
+message ReconcileOperationResponse {
+  OperationState state = 1;
+  bytes result_json = 2;
+  CapabilityError error = 3;
+}

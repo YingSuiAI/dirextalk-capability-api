@@ -1,0 +1,6 @@
+.git/
+gen/
+*.swp
+*.swo
+*~
+.DS_Store

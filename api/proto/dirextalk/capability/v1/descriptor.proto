@@ -1,0 +1,103 @@
+syntax = "proto3";
+
+package dirextalk.capability.v1;
+
+import "dirextalk/capability/v1/common.proto";
+
+option go_package = "github.com/YingSuiAI/dirextalk-capability-api/gen/go/dirextalk/capability/v1;capabilityv1";
+
+// CapabilityDescriptor 描述一个 capability 的元数据
+message CapabilityDescriptor {
+  // capability_id 是全局唯一标识符，如 "agent.chat.v1"
+  string capability_id = 1;
+
+  // semantic_version 是语义化版本，如 "1.2.3"
+  string semantic_version = 2;
+
+  // protocol_version 是协议版本，用于兼容性检查
+  int32 protocol_version = 3;
+
+  // catalog_digest 是所有 operations 的 SHA-256 摘要
+  bytes catalog_digest = 4;
+
+  // display_name 是人类可读的名称
+  string display_name = 5;
+
+  // description 是简短描述
+  string description = 6;
+
+  // operations 是此 capability 支持的操作列表
+  repeated OperationDescriptor operations = 7;
+
+  // registration_time_unix_ms 是注册时间
+  int64 registration_time_unix_ms = 8;
+
+  // readiness 表示当前是否可用
+  bool readiness = 9;
+
+  // readiness_reason 说明为何不可用（如依赖未就绪）
+  string readiness_reason = 10;
+}
+
+// OperationDescriptor 描述一个具体操作
+message OperationDescriptor {
+  // operation_id 是操作标识符，如 "send_message"
+  string operation_id = 1;
+
+  // display_name 是人类可读的名称
+  string display_name = 2;
+
+  // description 是操作描述
+  string description = 3;
+
+  // operation_type 是操作类型
+  OperationType operation_type = 4;
+
+  // audience 是允许的调用方
+  repeated Audience audience = 5;
+
+  // risk_level 是风险级别
+  RiskLevel risk_level = 6;
+
+  // required_scopes 是所需的权限范围
+  repeated string required_scopes = 7;
+
+  // required_grants 是所需的特殊授权（如部署、AWS 操作）
+  repeated string required_grants = 8;
+
+  // requires_revision 表示是否需要乐观锁 revision
+  bool requires_revision = 9;
+
+  // idempotency_window_seconds 是幂等窗口（秒），0 表示永久
+  int64 idempotency_window_seconds = 10;
+
+  // input_schema_json 是 JSON Schema 2020-12 格式的输入 schema
+  string input_schema_json = 11;
+
+  // input_schema_digest 是 input_schema_json 的 SHA-256
+  bytes input_schema_digest = 12;
+
+  // result_schema_json 是结果 schema
+  string result_schema_json = 13;
+
+  // result_schema_digest 是 result_schema_json 的 SHA-256
+  bytes result_schema_digest = 14;
+
+  // event_schema_json 是流式事件 schema（可选）
+  string event_schema_json = 15;
+
+  // event_schema_digest 是 event_schema_json 的 SHA-256
+  bytes event_schema_digest = 16;
+
+  // max_request_size_bytes 是最大请求大小
+  int64 max_request_size_bytes = 17;
+
+  // timeout_class 是超时类别：short/medium/long/indefinite
+  string timeout_class = 18;
+}
+
+// SchemaValidationResult 是 schema 验证结果
+message SchemaValidationResult {
+  bool valid = 1;
+  repeated string errors = 2;
+}
