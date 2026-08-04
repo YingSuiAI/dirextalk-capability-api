@@ -37,6 +37,23 @@ func TestStartReplayKeyUsesRootDigestNotFinalGrantDigest(t *testing.T) {
 	}
 }
 
+func TestStartReplayKeyRejectsUnsafeAccountGeneration(t *testing.T) {
+	valid := replayKeyFromClaims(testGrantClaims())
+	valid.AccountGeneration = MaxAccountGeneration
+	if err := valid.Validate(); err != nil {
+		t.Fatalf("maximum safe account generation rejected: %v", err)
+	}
+
+	unsafe := valid
+	unsafe.AccountGeneration = MaxAccountGeneration + 1
+	if !errors.Is(unsafe.Validate(), ErrStartReplayConflict) {
+		t.Fatal("unsafe account generation accepted by replay key validation")
+	}
+	if !errors.Is(ValidateStartReplayKey(valid, unsafe), ErrStartReplayConflict) {
+		t.Fatal("unsafe account generation crossed replay comparison fence")
+	}
+}
+
 func TestStartReplayReceiptRemainsImmutableWhileControlsRefresh(t *testing.T) {
 	claims := testGrantClaims()
 	key := replayKeyFromClaims(claims)

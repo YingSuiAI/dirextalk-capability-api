@@ -60,8 +60,8 @@ func (k StartReplayKey) Validate() error {
 	if err := validateReplayToken("owner_id", k.OwnerID); err != nil {
 		return fmt.Errorf("%w: %v", ErrStartReplayConflict, err)
 	}
-	if k.AccountGeneration <= 0 {
-		return fmt.Errorf("%w: account_generation must be positive", ErrStartReplayConflict)
+	if !ValidAccountGeneration(k.AccountGeneration) {
+		return fmt.Errorf("%w: account_generation must be in [1,%d]", ErrStartReplayConflict, MaxAccountGeneration)
 	}
 	if err := ValidateSHA256Digest(k.RootRequestDigest); err != nil {
 		return fmt.Errorf("%w: root_request_digest: %v", ErrStartReplayConflict, err)
