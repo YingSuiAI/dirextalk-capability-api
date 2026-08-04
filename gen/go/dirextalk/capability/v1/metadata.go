@@ -65,6 +65,16 @@ type CapabilityMetadata struct {
 	AccountGeneration int64
 }
 
+// MaxAccountGeneration is the largest integer that retains one exact identity
+// across protobuf int64, decimal gRPC metadata, and RFC 8785 JSON grants.
+const MaxAccountGeneration int64 = 1<<53 - 1
+
+// ValidAccountGeneration reports whether a generation can be used as a
+// cross-service identity fence without JSON number precision ambiguity.
+func ValidAccountGeneration(value int64) bool {
+	return value > 0 && value <= MaxAccountGeneration
+}
+
 // FormatCapabilityMetadata returns canonical metadata values for outgoing
 // gRPC calls.
 func FormatCapabilityMetadata(token, instanceID string, accountGeneration int64) (map[string]string, error) {
@@ -75,8 +85,8 @@ func FormatCapabilityMetadata(token, instanceID string, accountGeneration int64)
 	if err := validateInstanceID(instanceID); err != nil {
 		return nil, err
 	}
-	if accountGeneration <= 0 {
-		return nil, fmt.Errorf("%w: account generation must be positive", ErrInvalidCapabilityMetadata)
+	if !ValidAccountGeneration(accountGeneration) {
+		return nil, fmt.Errorf("%w: account generation must be in [1,%d]", ErrInvalidCapabilityMetadata, MaxAccountGeneration)
 	}
 	return map[string]string{
 		CapabilityAuthorizationMetadata: authorization,
@@ -122,7 +132,7 @@ func ParseCapabilityMetadata(values map[string][]string) (CapabilityMetadata, er
 		return CapabilityMetadata{}, fmt.Errorf("%w: account generation must be canonical positive decimal", ErrInvalidCapabilityMetadata)
 	}
 	generation, err := strconv.ParseInt(generationText, 10, 64)
-	if err != nil || generation <= 0 {
+	if err != nil || !ValidAccountGeneration(generation) {
 		return CapabilityMetadata{}, fmt.Errorf("%w: invalid account generation", ErrInvalidCapabilityMetadata)
 	}
 	return CapabilityMetadata{Token: token, InstanceID: instanceID, AccountGeneration: generation}, nil

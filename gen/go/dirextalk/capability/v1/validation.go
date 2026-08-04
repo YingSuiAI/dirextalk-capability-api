@@ -192,8 +192,8 @@ func ValidatePermissionContext(permission *PermissionContext) error {
 	if len(permission.CapabilityGrant) == 0 {
 		return errors.New("capability_grant is required")
 	}
-	if permission.AccountGeneration <= 0 {
-		return errors.New("account_generation must be positive")
+	if !ValidAccountGeneration(permission.AccountGeneration) {
+		return fmt.Errorf("account_generation must be in [1,%d]", MaxAccountGeneration)
 	}
 	if len(permission.RootRequestDigest) > 0 {
 		if err := ValidateSHA256Digest(permission.RootRequestDigest); err != nil {

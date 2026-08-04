@@ -104,6 +104,15 @@ func TestCapabilityGrantRoundTripAndDeterminism(t *testing.T) {
 	}
 }
 
+func TestCapabilityGrantRejectsUnsafeAccountGeneration(t *testing.T) {
+	_, privateKey := testGrantKeys()
+	claims := testGrantClaims()
+	claims.AccountGeneration = MaxAccountGeneration + 1
+	if _, err := (GrantCodec{}).Sign(claims, privateKey); !errors.Is(err, ErrInvalidGrant) {
+		t.Fatalf("unsafe account generation was signed: %v", err)
+	}
+}
+
 func TestCapabilityGrantVerificationRequiresCompleteBinding(t *testing.T) {
 	publicKey, privateKey := testGrantKeys()
 	now := time.UnixMilli(1_700_000_100_000)

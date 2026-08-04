@@ -335,8 +335,8 @@ func ValidateGrantClaims(claims GrantClaims, maxTTL time.Duration) error {
 	if err := validateGrantToken("owner_id", claims.OwnerID, 256); err != nil {
 		return err
 	}
-	if claims.AccountGeneration <= 0 {
-		return fmt.Errorf("%w: account_generation must be positive", ErrInvalidGrant)
+	if !ValidAccountGeneration(claims.AccountGeneration) {
+		return fmt.Errorf("%w: account_generation must be in [1,%d]", ErrInvalidGrant, MaxAccountGeneration)
 	}
 	if err := validateGrantToken("root_capability_id", claims.RootCapabilityID, 256); err != nil {
 		return err
@@ -888,7 +888,7 @@ func ValidateOperationControlGrant(claims OperationControlGrant, maxTTL time.Dur
 	if err := validateGrantToken("owner_id", claims.OwnerID, 256); err != nil {
 		return fmt.Errorf("%w: owner_id", ErrInvalidControlGrant)
 	}
-	if claims.AccountGeneration <= 0 || claims.EntryHop <= 0 || claims.DeadlineUnixMs <= 0 || claims.IssuedAtUnixMs <= 0 || claims.ExpiresAtUnixMs <= claims.IssuedAtUnixMs || claims.DeadlineUnixMs > claims.ExpiresAtUnixMs {
+	if !ValidAccountGeneration(claims.AccountGeneration) || claims.EntryHop <= 0 || claims.DeadlineUnixMs <= 0 || claims.IssuedAtUnixMs <= 0 || claims.ExpiresAtUnixMs <= claims.IssuedAtUnixMs || claims.DeadlineUnixMs > claims.ExpiresAtUnixMs {
 		return ErrInvalidControlGrant
 	}
 	if claims.ControlAction != "get" && claims.ControlAction != "watch" && claims.ControlAction != "cancel" && claims.ControlAction != "reconcile" {
