@@ -106,6 +106,10 @@ grant digest）生成最终 `StartOperationRequest.request_digest`，避免循�
   完整 `StartReplayKey`（operation UUID、capability/operation、owner、generation、
   `RootRequestDigest`），缺少任一字段不得接受 replay
 - **Conflict**: 同 ID + 不同 root/business digest 或 principal/descriptor → 永久冲突；同 root digest 搭配新的、仍有效且精确绑定的 grant 是允许的控制授权刷新，不得改变已有 receipt/state/result。
+- **Replay metadata**: `StartOperationResponse.replayed=false` 只表示本次
+  admission 新建了 operation；相同 operation ID + root digest 命中既有 durable
+  receipt 时必须为 `true`。该字段是传输元数据，不进入不可变的业务
+  `result_json`，也不能作为重新执行副作用的依据。
 
 ### 5. 不确定状态处理
 

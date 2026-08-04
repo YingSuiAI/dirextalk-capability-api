@@ -81,6 +81,13 @@ message StartOperationResponse {
   // On an idempotent replay with the same RootRequestDigest, the business
   // receipt/state/result stays unchanged while this set may be renewed.
   repeated OperationControlGrantEnvelope control_grants = 4;
+
+  // replayed is transport metadata from the durable operation ledger. It is
+  // false only for the admission that created the operation and true whenever
+  // the same operation_id + RootRequestDigest reuses the existing receipt.
+  // It is deliberately outside result_json so immutable business receipts do
+  // not need to be rewritten merely to report a retry to a compatibility API.
+  bool replayed = 5;
 }
 
 // GetOperationRequest 获取 operation 状态请求

@@ -4,7 +4,7 @@
 
 ## 协议版本
 
-- **当前版本**: v1.0.0
+- **当前版本**: v1.0.1
 - **包名**: `dirextalk.capability.v1`
 - **协议**: gRPC + Protobuf
 
@@ -37,7 +37,7 @@ Agent 和 message-server 通过 `go.mod` 固定引用正式 tag：
 
 ```go
 require (
-    github.com/YingSuiAI/dirextalk-capability-api v1.0.0
+    github.com/YingSuiAI/dirextalk-capability-api v1.0.1
 )
 ```
 

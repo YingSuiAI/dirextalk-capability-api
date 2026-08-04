@@ -1,5 +1,10 @@
 # Changelog
 
+## v1.0.1
+
+- Add `StartOperationResponse.replayed` so compatibility gateways can expose
+  exact retry metadata without mutating durable business receipts.
+
 ## v1.0.0
 
 - 发布中立的 Agent/Product Capability v1 protobuf 与 Go 生成物。

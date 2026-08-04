@@ -368,6 +368,12 @@ type StartOperationResponse struct {
 	// On an idempotent replay with the same RootRequestDigest, the business
 	// receipt/state/result stays unchanged while this set may be renewed.
 	ControlGrants []*OperationControlGrantEnvelope `protobuf:"bytes,4,rep,name=control_grants,json=controlGrants,proto3" json:"control_grants,omitempty"`
+	// replayed is transport metadata from the durable operation ledger. It is
+	// false only for the admission that created the operation and true whenever
+	// the same operation_id + RootRequestDigest reuses the existing receipt.
+	// It is deliberately outside result_json so immutable business receipts do
+	// not need to be rewritten merely to report a retry to a compatibility API.
+	Replayed      bool `protobuf:"varint,5,opt,name=replayed,proto3" json:"replayed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -428,6 +434,13 @@ func (x *StartOperationResponse) GetControlGrants() []*OperationControlGrantEnve
 		return x.ControlGrants
 	}
 	return nil
+}
+
+func (x *StartOperationResponse) GetReplayed() bool {
+	if x != nil {
+		return x.Replayed
+	}
+	return false
 }
 
 // GetOperationRequest 获取 operation 状态请求
@@ -1349,12 +1362,13 @@ const file_dirextalk_capability_v1_agent_capability_proto_rawDesc = "" +
 	"\toperation\x18\x05 \x01(\tR\toperation\x12!\n" +
 	"\frequest_json\x18\x06 \x01(\fR\vrequestJson\x12%\n" +
 	"\x0erequest_digest\x18\a \x01(\fR\rrequestDigest\x12+\n" +
-	"\x11expected_revision\x18\b \x01(\x03R\x10expectedRevision\"\x99\x02\n" +
+	"\x11expected_revision\x18\b \x01(\x03R\x10expectedRevision\"\xb5\x02\n" +
 	"\x16StartOperationResponse\x12!\n" +
 	"\foperation_id\x18\x01 \x01(\tR\voperationId\x12=\n" +
 	"\x05state\x18\x02 \x01(\x0e2'.dirextalk.capability.v1.OperationStateR\x05state\x12>\n" +
 	"\x05error\x18\x03 \x01(\v2(.dirextalk.capability.v1.CapabilityErrorR\x05error\x12]\n" +
-	"\x0econtrol_grants\x18\x04 \x03(\v26.dirextalk.capability.v1.OperationControlGrantEnvelopeR\rcontrolGrants\"\xcd\x01\n" +
+	"\x0econtrol_grants\x18\x04 \x03(\v26.dirextalk.capability.v1.OperationControlGrantEnvelopeR\rcontrolGrants\x12\x1a\n" +
+	"\breplayed\x18\x05 \x01(\bR\breplayed\"\xcd\x01\n" +
 	"\x13GetOperationRequest\x12G\n" +
 	"\fcall_context\x18\x01 \x01(\v2$.dirextalk.capability.v1.CallContextR\vcallContext\x12J\n" +
 	"\n" +
