@@ -1,0 +1,422 @@
+openapi: 3.1.0
+info:
+  title: Dirextalk Agent Data Plane
+  version: 1.1.0
+  description: >-
+    Shared owner-facing Agent HTTP and SSE data contract. Contract revision v2
+    preserves the deployed /agent/v1 base path while making error and stream
+    identities explicit. Agent session tickets remain short-lived bearer
+    credentials issued by Message Server; this contract does not change their
+    scopes, claims, signing keys, or rotation policy.
+servers:
+  - url: /agent/v1
+    description: Same-origin Agent data-plane proxy
+tags:
+  - name: Operations
+security:
+  - AgentSessionTicket: []
+paths:
+  /operations/{operation_id}:
+    get:
+      tags: [Operations]
+      operationId: getAgentOperation
+      summary: Read one admitted operation snapshot
+      parameters:
+        - $ref: '#/components/parameters/OperationId'
+      responses:
+        '200':
+          description: Current operation state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OperationSnapshot'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+  /operations/{operation_id}/events:
+    get:
+      tags: [Operations]
+      operationId: watchAgentOperationEvents
+      summary: Resume an operation event stream
+      parameters:
+        - $ref: '#/components/parameters/OperationId'
+        - name: after_seq
+          in: query
+          required: false
+          description: >-
+            Last processed sequence. If Last-Event-ID is also present, both
+            values must be identical.
+          schema:
+            $ref: '#/components/schemas/Sequence'
+        - name: Last-Event-ID
+          in: header
+          required: false
+          schema:
+            type: string
+            pattern: '^(0|[1-9][0-9]*)$'
+      responses:
+        '200':
+          description: >-
+            text/event-stream response. Each non-heartbeat data field is one
+            SseEnvelope JSON object. The SSE id is the decimal sequence and
+            the SSE event is the envelope type.
+          content:
+            text/event-stream:
+              schema:
+                type: string
+          x-event-data-schema:
+            $ref: '#/components/schemas/SseEnvelope'
+        default:
+          $ref: '#/components/responses/ErrorResponse'
+components:
+  securitySchemes:
+    AgentSessionTicket:
+      type: http
+      scheme: bearer
+      bearerFormat: compact EdDSA JWS
+      description: >-
+        Short-lived Message Server-issued owner session ticket. The fixed
+        ticket scope set is represented by AgentDataScope; clients cannot
+        request or widen scopes through this data plane.
+  parameters:
+    OperationId:
+      name: operation_id
+      in: path
+      required: true
+      schema:
+        $ref: '#/components/schemas/OperationId'
+  responses:
+    ErrorResponse:
+      description: Safe structured failure
+      headers:
+        Retry-After:
+          description: >-
+            Optional standard delay in seconds. When present it represents the
+            same delay as retry_after_ms, rounded up to whole seconds.
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorEnvelope'
+  schemas:
+    OperationId:
+      type: string
+      format: uuid
+      description: Durable operation UUID.
+    TurnId:
+      type: string
+      format: uuid
+      description: Durable Turn UUID.
+    ConversationId:
+      type: string
+      format: uuid
+      description: Durable conversation UUID.
+    SessionId:
+      type: string
+      format: uuid
+      description: Stable client-selected session UUID reused during refresh.
+    RequestId:
+      type: string
+      minLength: 1
+      maxLength: 128
+      pattern: '^[A-Za-z0-9._:-]+$'
+      description: Safe request correlation identifier.
+    Sequence:
+      type: integer
+      format: int64
+      minimum: 0
+      description: Monotonic per-operation replay cursor.
+    AgentDataScope:
+      type: string
+      description: >-
+        Current Message Server-issued owner session scope constants. This list
+        is authoritative and is not client-selectable.
+      enum:
+        - agent.execution.v2
+        - agent:account:deprovision
+        - agent:aws:credentials:read
+        - agent:aws:credentials:write
+        - agent:chat:read
+        - agent:chat:write
+        - agent:config:read
+        - agent:config:write
+        - agent:confirmations:read
+        - agent:confirmations:write
+        - agent:image_tools:execute
+        - agent:image_tools:upload
+        - agent:info:read
+        - agent:knowledge:read
+        - agent:knowledge:write
+        - agent:mcp:execute
+        - agent:mcp:read
+        - agent:mcp:write
+        - agent:memory:read
+        - agent:memory:write
+        - agent:models:read
+        - agent:models:write
+        - agent:product:execute
+        - agent:runtime:read
+        - agent:runtime:write
+        - agent:schedules:read
+        - agent:schedules:write
+        - agent:skills:execute
+        - agent:skills:read
+        - agent:skills:write
+        - agent:static_sites:read
+        - agent:static_sites:write
+        - agent:tasks:read
+        - agent:tasks:write
+        - agent:text_tools:execute
+        - agent:text_tools:read
+        - agent:text_tools:write
+        - agent:voice:write
+        - agent:web_search:read
+        - agent:web_search:write
+        - agent:worker:destroy
+        - agent:worker:read
+    AgentSessionResponse:
+      type: object
+      additionalProperties: false
+      required:
+        - ticket
+        - expires_at
+        - server_time
+        - base_path
+        - session_id
+        - scopes
+      properties:
+        ticket:
+          type: string
+          minLength: 5
+          pattern: '^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$'
+          description: Short-lived compact EdDSA JWS bearer ticket.
+        expires_at:
+          type: string
+          format: date-time
+          description: Ticket expiration as RFC 3339 UTC.
+        server_time:
+          type: string
+          format: date-time
+          description: Ticket issuance time as RFC 3339 UTC.
+        base_path:
+          type: string
+          enum: [/agent/v1]
+        session_id:
+          $ref: '#/components/schemas/SessionId'
+        scopes:
+          type: array
+          minItems: 1
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/AgentDataScope'
+    OperationState:
+      type: string
+      description: Generic operation and durable Turn states currently exposed by the data plane.
+      enum:
+        - pending
+        - accepted
+        - running
+        - waiting_confirmation
+        - completed
+        - failed
+        - canceled
+        - cancelled
+        - uncertain
+    OperationReceipt:
+      type: object
+      additionalProperties: false
+      required: [operation_id, idempotency_key, state, replayed]
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/OperationId'
+        turn_id:
+          $ref: '#/components/schemas/TurnId'
+        idempotency_key:
+          type: string
+          format: uuid
+        state:
+          $ref: '#/components/schemas/OperationState'
+        replayed:
+          type: boolean
+    TurnOperationReceipt:
+      description: >-
+        A start-Turn admission receipt. operation_id and turn_id are both
+        required and must contain the same UUID in contract v2.
+      allOf:
+        - $ref: '#/components/schemas/OperationReceipt'
+        - type: object
+          required: [turn_id]
+    OperationSnapshot:
+      type: object
+      additionalProperties: false
+      required: [operation_id, state, sequence]
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/OperationId'
+        turn_id:
+          $ref: '#/components/schemas/TurnId'
+        conversation_id:
+          $ref: '#/components/schemas/ConversationId'
+        state:
+          $ref: '#/components/schemas/OperationState'
+        sequence:
+          $ref: '#/components/schemas/Sequence'
+        result:
+          description: Operation-specific result validated by its catalog schema.
+        error:
+          $ref: '#/components/schemas/ErrorEnvelope'
+    ErrorCategory:
+      type: string
+      enum:
+        - authentication
+        - authorization
+        - validation
+        - not_found
+        - conflict
+        - rate_limit
+        - unavailable
+        - upstream
+        - internal
+    RuntimeComponent:
+      type: string
+      enum:
+        - system_prompt
+        - request_dialect
+        - intrinsic_tools
+        - extensions
+        - execution_policy
+    ErrorDetails:
+      type: object
+      additionalProperties: false
+      description: >-
+        Explicit public detail allowlist. Arbitrary upstream payloads, stack
+        traces, paths, credentials, and provider response bodies are forbidden.
+      properties:
+        field:
+          type: string
+          maxLength: 128
+        required_scope:
+          $ref: '#/components/schemas/AgentDataScope'
+        expected_revision:
+          type: integer
+          format: int64
+          minimum: 0
+        actual_revision:
+          type: integer
+          format: int64
+          minimum: 0
+        first_sequence:
+          $ref: '#/components/schemas/Sequence'
+        last_sequence:
+          $ref: '#/components/schemas/Sequence'
+        runtime_component:
+          $ref: '#/components/schemas/RuntimeComponent'
+    ErrorEnvelope:
+      type: object
+      additionalProperties: false
+      required: [code, message, category, retryable, request_id]
+      properties:
+        code:
+          type: string
+          minLength: 1
+          maxLength: 128
+          pattern: '^[A-Z][A-Z0-9_]*$'
+        message:
+          type: string
+          minLength: 1
+          maxLength: 512
+          description: Safe client-facing message with no secret or raw upstream data.
+        category:
+          $ref: '#/components/schemas/ErrorCategory'
+        retryable:
+          type: boolean
+        retry_after_ms:
+          type: integer
+          format: int64
+          minimum: 0
+        request_id:
+          $ref: '#/components/schemas/RequestId'
+        operation_id:
+          $ref: '#/components/schemas/OperationId'
+        turn_id:
+          $ref: '#/components/schemas/TurnId'
+        details:
+          $ref: '#/components/schemas/ErrorDetails'
+    OperationSseEnvelope:
+      type: object
+      additionalProperties: false
+      required: [operation_id, sequence, type, payload, created_at]
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/OperationId'
+        sequence:
+          $ref: '#/components/schemas/Sequence'
+        type:
+          type: string
+          minLength: 1
+          maxLength: 128
+        payload:
+          description: Event-specific value validated by the operation event schema.
+        created_at:
+          type: string
+          format: date-time
+    TurnSseEnvelope:
+      type: object
+      additionalProperties: false
+      description: >-
+        Turn event envelope. operation_id and turn_id must contain the same UUID;
+        conversation_id is always explicit and is never inferred from payload.
+      required:
+        - operation_id
+        - turn_id
+        - conversation_id
+        - sequence
+        - type
+        - payload
+        - created_at
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/OperationId'
+        turn_id:
+          $ref: '#/components/schemas/TurnId'
+        conversation_id:
+          $ref: '#/components/schemas/ConversationId'
+        sequence:
+          $ref: '#/components/schemas/Sequence'
+        type:
+          type: string
+          minLength: 1
+          maxLength: 128
+        payload:
+          description: Durable Turn event projection or safe ErrorEnvelope.
+        created_at:
+          type: string
+          format: date-time
+    SseEnvelope:
+      type: object
+      additionalProperties: false
+      description: >-
+        Shared SSE shape. Generic operation events omit turn_id and
+        conversation_id. Turn events must use TurnSseEnvelope, where both
+        identities are required and operation_id must equal turn_id.
+      required: [operation_id, sequence, type, payload, created_at]
+      properties:
+        operation_id:
+          $ref: '#/components/schemas/OperationId'
+        turn_id:
+          $ref: '#/components/schemas/TurnId'
+        conversation_id:
+          $ref: '#/components/schemas/ConversationId'
+        sequence:
+          $ref: '#/components/schemas/Sequence'
+        type:
+          type: string
+          minLength: 1
+          maxLength: 128
+        payload:
+          description: Event-specific value validated by the operation event schema.
+        created_at:
+          type: string
+          format: date-time

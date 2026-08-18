@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased (planned v1.1.0)
+
+- Add the OpenAPI 3.1 Agent Data Plane v2 contract while retaining the deployed
+  `/agent/v1` base path and existing gRPC v1 semantics.
+- Add generated Go DTOs and an independent Dart model package from pinned,
+  checksum-verified generators.
+- Add shared valid/invalid conformance vectors for session, operation, safe
+  error, and SSE envelopes, including the Turn identity equality rule.
+- Add PR/main CI and zero-drift checks for OpenAPI, Dart, Go, and protobuf
+  generated outputs.
+- Keep session ticket scopes, claims, signing authority, and key rotation
+  behavior unchanged.
+
 ## v1.0.1
 
 - Add `StartOperationResponse.replayed` so compatibility gateways can expose

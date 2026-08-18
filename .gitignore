@@ -7,6 +7,8 @@
 *.swo
 *~
 .DS_Store
+.dart_tool/
+gen/dart/**/pubspec.lock
 
 # Test mTLS fixtures contain private keys and directional bearer tokens. The
 # generator writes them only to a caller-selected temporary/output directory.

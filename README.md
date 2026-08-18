@@ -1,12 +1,15 @@
 # Dirextalk Capability API
 
-独立的、中立的 Capability 协议定义，作为 `dirextalk-agent` 和 `dirextalk-message-server` 的共同依赖。
+独立、中立的共享合同仓库，作为 `dirextalk-agent`、
+`dirextalk-message-server` 与 owner client 的共同依赖。现有 gRPC Capability
+协议与 owner-facing Agent HTTP/SSE 数据面在这里分别维护，互不改写语义。
 
 ## 协议版本
 
-- **当前版本**: v1.0.3
-- **包名**: `dirextalk.capability.v1`
-- **协议**: gRPC + Protobuf
+- **当前已发布版本**: v1.0.3
+- **下一兼容版本**: v1.1.0
+- **gRPC 包名**: `dirextalk.capability.v1`
+- **Agent 数据面合同**: OpenAPI 3.1，合同修订 v2，继续使用 `/agent/v1`
 
 ## 目录结构
 
@@ -17,10 +20,14 @@ api/proto/dirextalk/capability/v1/  # Protobuf 定义
 ├── common.proto                    # 共享类型
 └── descriptor.proto                # Capability descriptor
 
-conformance/                        # 一致性测试向量
-docs/                              # 协议文档
-buf.yaml                           # Buf 配置
-buf.gen.yaml                       # 代码生成配置
+api/openapi/agent-data-plane-v2.yaml         # Agent HTTP/SSE 权威合同
+conformance/agent-data-plane/v2/             # 跨端一致性向量
+contract/agentdatav2/                         # 合同与向量校验
+gen/go/dirextalk/agent/data/v2/               # 生成的 Go DTO
+gen/dart/dirextalk_agent_data_v2/             # 独立 Dart package
+docs/                                          # 协议文档
+buf.yaml                                       # Buf 配置
+buf.gen.yaml                                   # Protobuf 代码生成配置
 ```
 
 ## 版本策略
@@ -49,14 +56,21 @@ require (
 # 使用仓库脚本（Buf CLI 与 protoc 插件版本均已固定）
 bash scripts/generate-go.sh
 
+# 生成 Agent 数据面 Go/Dart 模型（生成器版本与 JAR SHA-256 均已固定）
+bash scripts/generate-models.sh
+
+# 在临时目录重建全部生成物并检查零漂移
+bash scripts/check-generated.sh
+
 # Lint
-buf lint
+go run github.com/bufbuild/buf/cmd/buf@v1.54.0 lint
 
 # 初始协议的 breaking change 检查（以 main 基线为准）
-buf breaking --against '.git#branch=main'
+git fetch --no-tags --force origin refs/heads/main:refs/remotes/origin/main
+go run github.com/bufbuild/buf/cmd/buf@v1.54.0 breaking --against '.git#ref=refs/remotes/origin/main'
 
-# 生成代码（不要依赖本机缓存的未跟踪 gen/ 文件）
-bash scripts/generate-go.sh
+# OpenAPI、conformance vectors、生成模型与既有 gRPC 测试
+go test ./...
 
 # 生成一次性的 mTLS、方向 token 与 Ed25519 grant key fixture
 # （目录必须由调用方指定，默认不要写入仓库）
@@ -67,6 +81,12 @@ bash scripts/generate-test-certs.sh "$tmp_certs"
 输出中的 `grant-private.key` 是 message-server 独占的 64 字节签名密钥；
 `grant-public.key` 是提供给 Agent 与 Product 验证端的 32 字节公钥。不得把私钥
 挂载进 Agent、Product、Flutter 或镜像层。
+
+Agent 数据面 v2 合同明确 session response、现有 scope 常量、operation
+receipt/snapshot、统一安全错误 envelope，以及通用/Turn SSE envelope。Turn SSE
+必须显式携带 `operation_id`、`turn_id`、`conversation_id`，且当前合同要求前两者
+相等；消费者不得从其中一个身份合成另一个。此兼容新增不改变 ticket claims、
+scope 权限、签名密钥或轮换策略。
 
 ## 协议原则
 
