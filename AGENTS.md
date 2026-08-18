@@ -26,5 +26,6 @@ Run the focused contract checks before committing:
 bash scripts/check-generated.sh
 go test ./...
 go run github.com/bufbuild/buf/cmd/buf@v1.54.0 lint
-go run github.com/bufbuild/buf/cmd/buf@v1.54.0 breaking --against '.git#branch=main'
+git fetch --no-tags --force origin refs/heads/main:refs/remotes/origin/main
+go run github.com/bufbuild/buf/cmd/buf@v1.54.0 breaking --against '.git#ref=refs/remotes/origin/main'
 ```

@@ -33,8 +33,10 @@ jobs:
         run: bash scripts/check-generated.sh
       - name: Lint protobuf contract
         run: go run github.com/bufbuild/buf/cmd/buf@v1.54.0 lint
+      - name: Fetch canonical compatibility baseline
+        run: git fetch --no-tags --force origin refs/heads/main:refs/remotes/origin/main
       - name: Check protobuf compatibility
-        run: go run github.com/bufbuild/buf/cmd/buf@v1.54.0 breaking --against '.git#branch=main'
+        run: go run github.com/bufbuild/buf/cmd/buf@v1.54.0 breaking --against '.git#ref=refs/remotes/origin/main'
 
   dart-models:
     runs-on: ubuntu-latest
