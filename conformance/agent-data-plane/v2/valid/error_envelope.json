@@ -1,0 +1,11 @@
+{
+  "code": "AGENT_OPERATION_RESOURCE_EXHAUSTED",
+  "message": "Agent provider rate limit was reached",
+  "category": "rate_limit",
+  "retryable": true,
+  "retry_after_ms": 1500,
+  "request_id": "request-20260818-0001",
+  "operation_id": "56565656-5656-4656-8656-565656565656",
+  "turn_id": "56565656-5656-4656-8656-565656565656",
+  "details": {"required_scope": "agent:chat:write"}
+}

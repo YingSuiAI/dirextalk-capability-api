@@ -1,0 +1,8 @@
+{
+  "code": "AGENT_OPERATION_FAILED",
+  "message": "Agent operation failed",
+  "category": "internal",
+  "retryable": false,
+  "request_id": "request-20260818-0002",
+  "details": {"raw_upstream_body": "must never cross the boundary"}
+}

@@ -1,0 +1,7 @@
+package: agentdatav2
+generate:
+  models: true
+output-options:
+  skip-prune: true
+compatibility:
+  always-prefix-enum-values: true

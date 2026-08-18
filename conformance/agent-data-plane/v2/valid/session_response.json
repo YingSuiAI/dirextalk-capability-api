@@ -1,0 +1,8 @@
+{
+  "ticket": "dGVzdC1vbmx5.dGVzdC1vbmx5.dGVzdC1vbmx5",
+  "expires_at": "2026-08-18T03:15:00Z",
+  "server_time": "2026-08-18T03:00:00Z",
+  "base_path": "/agent/v1",
+  "session_id": "78787878-7878-4787-8787-787878787878",
+  "scopes": ["agent:chat:read", "agent:chat:write"]
+}

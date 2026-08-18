@@ -1,0 +1,16 @@
+{
+  "contract": "dirextalk-agent-data-plane",
+  "version": 2,
+  "vectors": [
+    {"file": "valid/session_response.json", "schema": "AgentSessionResponse", "valid": true},
+    {"file": "valid/operation_receipt.json", "schema": "OperationReceipt", "valid": true},
+    {"file": "valid/turn_operation_receipt.json", "schema": "TurnOperationReceipt", "valid": true, "rule": "operation_id_equals_turn_id"},
+    {"file": "valid/operation_snapshot.json", "schema": "OperationSnapshot", "valid": true},
+    {"file": "valid/error_envelope.json", "schema": "ErrorEnvelope", "valid": true},
+    {"file": "valid/operation_sse_envelope.json", "schema": "OperationSseEnvelope", "valid": true},
+    {"file": "valid/turn_sse_envelope.json", "schema": "TurnSseEnvelope", "valid": true, "rule": "operation_id_equals_turn_id"},
+    {"file": "invalid/error_unknown_details.json", "schema": "ErrorEnvelope", "valid": false},
+    {"file": "invalid/turn_sse_missing_conversation.json", "schema": "TurnSseEnvelope", "valid": false},
+    {"file": "invalid/turn_sse_mismatched_identity.json", "schema": "TurnSseEnvelope", "valid": false, "rule": "operation_id_equals_turn_id"}
+  ]
+}

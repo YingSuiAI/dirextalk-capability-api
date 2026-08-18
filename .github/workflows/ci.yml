@@ -1,0 +1,52 @@
+name: Contract CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: contract-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  go-and-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.23.x'
+          cache: true
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Test contracts and Go packages
+        run: go test ./...
+      - name: Verify generated outputs
+        run: bash scripts/check-generated.sh
+      - name: Lint protobuf contract
+        run: go run github.com/bufbuild/buf/cmd/buf@v1.54.0 lint
+      - name: Check protobuf compatibility
+        run: go run github.com/bufbuild/buf/cmd/buf@v1.54.0 breaking --against '.git#branch=main'
+
+  dart-models:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: gen/dart/dirextalk_agent_data_v2
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dart-lang/setup-dart@v1
+        with:
+          sdk: '3.12.2'
+      - name: Resolve package
+        run: dart pub get
+      - name: Analyze generated models
+        run: dart analyze
