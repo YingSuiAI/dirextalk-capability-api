@@ -1,7 +1,7 @@
 openapi: 3.1.0
 info:
   title: Dirextalk Agent Data Plane
-  version: 1.1.0
+  version: 1.2.0
   description: >-
     Shared owner-facing Agent HTTP and SSE data contract. Contract revision v2
     preserves the deployed /agent/v1 base path while making error and stream
@@ -161,6 +161,9 @@ components:
         - agent:runtime:write
         - agent:schedules:read
         - agent:schedules:write
+        - agent:servers:destroy
+        - agent:servers:read
+        - agent:servers:write
         - agent:skills:execute
         - agent:skills:read
         - agent:skills:write

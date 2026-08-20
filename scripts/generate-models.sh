@@ -44,7 +44,7 @@ java -jar "$generator_jar" generate \
   --input-spec "$contract" \
   --output "$dart_staging" \
   --global-property 'models,modelDocs=false,modelTests=false,supportingFiles' \
-  --additional-properties 'pubName=dirextalk_agent_data_v2,pubLibrary=dirextalk_agent_data_v2,pubVersion=1.1.0,pubDescription=Generated Dirextalk Agent Data Plane v2 models,pubHomepage=https://github.com/YingSuiAI/dirextalk-capability-api,pubRepository=https://github.com/YingSuiAI/dirextalk-capability-api'
+  --additional-properties 'pubName=dirextalk_agent_data_v2,pubLibrary=dirextalk_agent_data_v2,pubVersion=1.2.0,pubDescription=Generated Dirextalk Agent Data Plane v2 models,pubHomepage=https://github.com/YingSuiAI/dirextalk-capability-api,pubRepository=https://github.com/YingSuiAI/dirextalk-capability-api'
 
 mkdir -p \
   "$output_root/gen/go/dirextalk/agent/data/v2" \

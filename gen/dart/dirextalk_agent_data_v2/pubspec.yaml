@@ -3,7 +3,7 @@
 #
 
 name: 'dirextalk_agent_data_v2'
-version: '1.1.0'
+version: '1.2.0'
 description: 'Generated Dirextalk Agent Data Plane v2 models'
 homepage: 'https://github.com/YingSuiAI/dirextalk-capability-api'
 repository: https://github.com/YingSuiAI/dirextalk-capability-api
