@@ -50,6 +50,9 @@ class AgentDataScope {
   static const agentColonRuntimeColonWrite = AgentDataScope._(r'agent:runtime:write');
   static const agentColonSchedulesColonRead = AgentDataScope._(r'agent:schedules:read');
   static const agentColonSchedulesColonWrite = AgentDataScope._(r'agent:schedules:write');
+  static const agentColonServersColonDestroy = AgentDataScope._(r'agent:servers:destroy');
+  static const agentColonServersColonRead = AgentDataScope._(r'agent:servers:read');
+  static const agentColonServersColonWrite = AgentDataScope._(r'agent:servers:write');
   static const agentColonSkillsColonExecute = AgentDataScope._(r'agent:skills:execute');
   static const agentColonSkillsColonRead = AgentDataScope._(r'agent:skills:read');
   static const agentColonSkillsColonWrite = AgentDataScope._(r'agent:skills:write');
@@ -95,6 +98,9 @@ class AgentDataScope {
     agentColonRuntimeColonWrite,
     agentColonSchedulesColonRead,
     agentColonSchedulesColonWrite,
+    agentColonServersColonDestroy,
+    agentColonServersColonRead,
+    agentColonServersColonWrite,
     agentColonSkillsColonExecute,
     agentColonSkillsColonRead,
     agentColonSkillsColonWrite,
@@ -175,6 +181,9 @@ class AgentDataScopeTypeTransformer {
         case r'agent:runtime:write': return AgentDataScope.agentColonRuntimeColonWrite;
         case r'agent:schedules:read': return AgentDataScope.agentColonSchedulesColonRead;
         case r'agent:schedules:write': return AgentDataScope.agentColonSchedulesColonWrite;
+        case r'agent:servers:destroy': return AgentDataScope.agentColonServersColonDestroy;
+        case r'agent:servers:read': return AgentDataScope.agentColonServersColonRead;
+        case r'agent:servers:write': return AgentDataScope.agentColonServersColonWrite;
         case r'agent:skills:execute': return AgentDataScope.agentColonSkillsColonExecute;
         case r'agent:skills:read': return AgentDataScope.agentColonSkillsColonRead;
         case r'agent:skills:write': return AgentDataScope.agentColonSkillsColonWrite;

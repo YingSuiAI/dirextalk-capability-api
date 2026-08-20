@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased (planned v1.1.0)
+## Unreleased (planned v1.2.0)
+
+- Add owner ticket scopes for unified server and artifact inventory reads,
+  artifact deletion, and server destruction.
+
+## v1.1.0
 
 - Add the OpenAPI 3.1 Agent Data Plane v2 contract while retaining the deployed
   `/agent/v1` base path and existing gRPC v1 semantics.
